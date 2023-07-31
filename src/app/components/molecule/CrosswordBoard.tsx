@@ -127,7 +127,7 @@ export default function CrosswordBoard() {
       let isContinue = true;
       for (let i = 1; (i < childNodes.length && maxReStyleCell < MAX_COUNT_REPLY); i++) {
         const element = childNodes[i];
-        const elChild = element.childNodes;
+        const elChild: any = element.childNodes;
         if (elChild.length > 0) {
           const reactNode = elChild[0];
           reactNode.attributes['stroke-width'].value = '0.75';
