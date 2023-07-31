@@ -19,7 +19,7 @@ const FocusErrorColor = '#F615AC'
 const BoardTheme = {
   allowNonSquare: true,
   gridBackground: '#E3E4F4',
-  cellBorder: '#221F80',
+  cellBorder: '#2E3192',
   numberColor: '#221F80',
   focusBackground: DefaultColor,
   highlightBackground: DefaultColor
@@ -29,6 +29,8 @@ interface SelectedClueObj {
   direction: string;
 }
 
+const MAX_COUNT_REPLY = 5;
+
 export default function CrosswordBoard() {
   // all the same functionality, but for the decomposed CrosswordProvider
   const crosswordRef = useRef<CrosswordProviderImperative>(null);
@@ -37,7 +39,9 @@ export default function CrosswordBoard() {
   const [isLoading, setLoading] = useState<boolean>(true);
   const [boardTheme, setBoardTheme] = useState<any>(JSON.parse(JSON.stringify(BoardTheme)))
   const [selectedClue, setSelectedClue] = useState<SelectedClueObj | null>(null)
-  const [inputEl, setInputEl] = useState<Element | null>(null)
+  const [maxReStyleCell, setMaxReStyleCell] = useState<number>(0)
+  const [cellElement, setCellElement] = useState<any[]>([])
+  const [selectedCell, setSelectedCell] = useState<number>(-1)
 
   const inputFocusHandler = () => {
     setBoardTheme((prev: any) => ({ ...prev, highlightBackground: DefaultColor, focusBackground: DefaultColor }))
@@ -57,20 +61,95 @@ export default function CrosswordBoard() {
     });
 
     return () => {
-      inputEl?.removeEventListener('focus', inputFocusHandler)
+      setMaxReStyleCell(0);
+      for (let j = 0; j < cellElement.length; j++) {
+        const element = cellElement[j];
+        element.removeEventListener("click", cellClickHandler);
+      }
     }
   }, []);
 
   useEffect(() => {
     if (data) {
-      setInputEl(document.querySelector('input[type="text"]'))
       crosswordRef.current?.reset();
+      setTimeout(() => {
+        reStyleBoardCell();
+      }, 200);
     }
-  }, [data])
+  }, [data]);
 
   useEffect(() => {
-    inputEl?.addEventListener('focus', inputFocusHandler)
-  }, [inputEl])
+    if (maxReStyleCell < 3) {
+      setTimeout(() => {
+        reStyleBoardCell();
+      }, 300);
+    }
+  }, [maxReStyleCell])
+
+  useEffect(() => {
+    if (selectedCell !== -1) {
+      const { across, down } = data
+      let found: boolean = false
+      Object.keys(across).forEach((k) => {
+        if (k === selectedCell.toString()) {
+          setSelectedClue({ index: parseInt(k), direction: 'across' })
+          found = true
+        }
+      })
+
+      if (!found) {
+        Object.keys(down).forEach((k) => {
+          if (k === selectedCell.toString()) {
+            setSelectedClue({ index: parseInt(k), direction: 'down' })
+          }
+        })
+      }
+      setSelectedCell(-1);
+    } else {
+      setSelectedClue(null)
+    }
+  }, [selectedCell])
+
+  const cellClickHandler = (e: any) => {
+    if (selectedCell === -1) {
+      setSelectedCell(e.target?.attributes?.selected?.value);
+    }
+    setBoardTheme((prev: any) => ({ ...prev, highlightBackground: DefaultColor, focusBackground: DefaultColor }))
+  }
+
+  const reStyleBoardCell = () => {
+    const svgNode = document.getElementsByTagName("svg");
+    const { childNodes } = svgNode[0];
+    if (childNodes.length === 0 && maxReStyleCell < MAX_COUNT_REPLY) {
+      setMaxReStyleCell(maxReStyleCell + 1);
+    } else {
+      const arrNode = [];
+      let isContinue = true;
+      for (let i = 1; (i < childNodes.length && maxReStyleCell < MAX_COUNT_REPLY); i++) {
+        const element = childNodes[i];
+        const elChild = element.childNodes;
+        if (elChild.length > 0) {
+          const reactNode = elChild[0];
+          reactNode.attributes['stroke-width'].value = '0.75';
+          reactNode.attributes['selected'] = {
+            value: elChild.length > 2 ? elChild[1].innerHTML : -1
+          }
+          arrNode.push(reactNode)
+        } else {
+          isContinue = false;
+          setMaxReStyleCell(maxReStyleCell + 1);
+        }
+      }
+
+      if (isContinue) {
+        for (let j = 0; j < arrNode.length; j++) {
+          const element = arrNode[j];
+          element.addEventListener("click", cellClickHandler);
+        }
+        setCellElement(arrNode);
+      }
+    }
+  }
 
   // onCorrect is called with the direction, number, and the correct answer.
   const onCorrectHandler = useCallback(() => {
@@ -83,22 +162,7 @@ export default function CrosswordBoard() {
   }, [data])
 
   const onCellChangeHandler = useCallback((row: number, col: number) => {
-    const { across, down } = data
-    let found: boolean = false
-    Object.keys(across).forEach((k) => {
-      if (across[k].row === row && across[k].col === col) {
-        setSelectedClue({ index: parseInt(k), direction: 'across' })
-        found = true
-      }
-    })
-
-    if (!found) {
-      Object.keys(down).forEach((k) => {
-        if (down[k].row === row && down[k].col === col) {
-          setSelectedClue({ index: parseInt(k), direction: 'down' })
-        }
-      })
-    }
+    // TO DO
   }, [data])
 
   const renderClueView = () => {
