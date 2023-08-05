@@ -39,12 +39,12 @@ export default function CrosswordBoard() {
 
   const [data, setData] = useState<any>(null);
   const [isLoading, setLoading] = useState<boolean>(true);
-  const [boardTheme, setBoardTheme] = useState<any>(JSON.parse(JSON.stringify(BoardTheme)))
-  const [selectedClue, setSelectedClue] = useState<SelectedClueObj | null>(null)
-  const [maxReStyleCell, setMaxReStyleCell] = useState<number>(0)
-  const [cellElement, setCellElement] = useState<any[]>([])
-  const [selectedCell, setSelectedCell] = useState<number>(-1)
-  const [selectedCellBoard, setSelectedCellBoard] = useState<any[]>([])
+  const [boardTheme, setBoardTheme] = useState<any>(JSON.parse(JSON.stringify(BoardTheme)));
+  const [selectedClue, setSelectedClue] = useState<SelectedClueObj | null>(null);
+  const [maxReStyleCell, setMaxReStyleCell] = useState<number>(0);
+  const [cellElement, setCellElement] = useState<any[]>([]);
+  const [selectedCell, setSelectedCell] = useState<number>(-1);
+  const [selectedCellBoard, setSelectedCellBoard] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,7 +52,7 @@ export default function CrosswordBoard() {
       return res.json();
     };
 
-    setBoardTheme(BoardTheme)
+    setBoardTheme(BoardTheme);
 
     fetchData().then((data: any) => {
       setData(data);
@@ -87,19 +87,19 @@ export default function CrosswordBoard() {
   useEffect(() => {
     //Display clue view when user click cell
     if (selectedCell !== -1) {
-      const { across, down } = data
-      let found: boolean = false
+      const { across, down } = data;
+      let found: boolean = false;
       Object.keys(across).forEach((k) => {
         if (k === selectedCell.toString()) {
           setSelectedClue({ index: parseInt(k), direction: 'across' })
-          found = true
+          found = true;
         }
       })
 
       if (!found) {
         Object.keys(down).forEach((k) => {
           if (k === selectedCell.toString()) {
-            setSelectedClue({ index: parseInt(k), direction: 'down' })
+            setSelectedClue({ index: parseInt(k), direction: 'down' });
           }
         })
       }
@@ -133,7 +133,7 @@ export default function CrosswordBoard() {
           const childIdx = elChild.length === 3 ? 2 : 1;
 
           if (elChild[childIdx]?.childNodes.length > 0) {
-            const reactNode: any = elChild[0]
+            const reactNode: any = elChild[0];
             reactNode.attributes['fill'].value = color;
           }
         }
@@ -145,7 +145,7 @@ export default function CrosswordBoard() {
 
   //validate correct or incorrect clue
   const doValidateCellBoardColor = () => {
-    const selectedBoards = JSON.parse(JSON.stringify(selectedCellBoard))
+    const selectedBoards = JSON.parse(JSON.stringify(selectedCellBoard));
 
     for (let i = 0; (i < cellElement.length); i++) {
       const { childNodes } = cellElement[i];
@@ -166,7 +166,7 @@ export default function CrosswordBoard() {
       }
 
       if (foundIdx > 0 && childNodes[childIdx]?.childNodes.lenght === 0) {
-        obj.color = ClearColor
+        obj.color = ClearColor;
         selectedBoards[foundIdx] = obj;
       } else if (activeCellColor === CorrectColor
         || activeCellColor === ErrorColor
@@ -174,7 +174,7 @@ export default function CrosswordBoard() {
         if (foundIdx > 0) {
           selectedBoards[foundIdx] = obj;
         } else {
-          selectedBoards.push(obj)
+          selectedBoards.push(obj);
         }
       }
     }
@@ -201,7 +201,7 @@ export default function CrosswordBoard() {
           if (activeCellColor === DefaultColor && childNodes.length > 1) {
             const clueVal = childNodes[1].attributes?.selected?.value;
             setSelectedCell(clueVal);
-            isContinue = false
+            isContinue = false;
           }
         }
       }, 200);
@@ -221,7 +221,7 @@ export default function CrosswordBoard() {
       if (elChild.length > 0) {
         const reactNode = elChild[0];
         reactNode.attributes['stroke-width'].value = '0.75';
-        element.setAttribute("cell", elChild.length > 2 ? elChild[1].innerHTML : -1)
+        element.setAttribute("cell", elChild.length > 2 ? elChild[1].innerHTML : -1);
         const value = {
           value: elChild.length > 2 ? elChild[1].innerHTML : -1
         }
@@ -230,7 +230,7 @@ export default function CrosswordBoard() {
           el.attributes['selected'] = value;
         }
 
-        arrNode.push(element)
+        arrNode.push(element);
       } else {
         isContinue = false;
         setMaxReStyleCell(maxReStyleCell + 1);
@@ -257,12 +257,12 @@ export default function CrosswordBoard() {
 
   // onCorrect is called with the direction, number, and the correct answer.
   const onCorrectHandler = useCallback(() => {
-    setBoardTheme((prev: any) => ({ ...prev, highlightBackground: CorrectColor, focusBackground: CorrectColor }))
+    setBoardTheme((prev: any) => ({ ...prev, highlightBackground: CorrectColor, focusBackground: CorrectColor }));
   }, [data]);
 
   // onAnswerIncorrect is called with the direction, number, and the incorrect answer.
   const onAnswerIncorrectHandler = useCallback(() => {
-    setBoardTheme((prev: any) => ({ ...prev, highlightBackground: ErrorColor, focusBackground: FocusErrorColor }))
+    setBoardTheme((prev: any) => ({ ...prev, highlightBackground: ErrorColor, focusBackground: FocusErrorColor }));
   }, [data])
 
   const onCellChangeHandler = useCallback((row: number, col: number) => {
@@ -274,8 +274,8 @@ export default function CrosswordBoard() {
    * @returns View
    */
   const renderClueView = () => {
-    const direction: string = selectedClue?.direction ?? ''
-    const index: number = selectedClue?.index ?? 1
+    const direction: string = selectedClue?.direction ?? '';
+    const index: number = selectedClue?.index ?? 1;
 
     return (
       <div className='box-border p-2 border-2 mb-3.5 border-blue-500 rounded-lg text-sm'>
