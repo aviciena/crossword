@@ -13,8 +13,10 @@ import ErrorView from '../atom/ErrorView';
 
 const IS_HIDE_CLUES = true
 const ErrorColor = '#E4D7FF'
-const DefaultColor = '#E3FFA8'
+const CorrectColor = '#E3FFA8'
 const FocusErrorColor = '#F615AC'
+const DefaultColor = 'rgb(255,255,204)'
+const ClearColor = 'rgb(255,255,255)'
 
 const BoardTheme = {
   allowNonSquare: true,
@@ -42,10 +44,7 @@ export default function CrosswordBoard() {
   const [maxReStyleCell, setMaxReStyleCell] = useState<number>(0)
   const [cellElement, setCellElement] = useState<any[]>([])
   const [selectedCell, setSelectedCell] = useState<number>(-1)
-
-  const inputFocusHandler = () => {
-    setBoardTheme((prev: any) => ({ ...prev, highlightBackground: DefaultColor, focusBackground: DefaultColor }))
-  }
+  const [selectedCellBoard, setSelectedCellBoard] = useState<any[]>([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -62,9 +61,8 @@ export default function CrosswordBoard() {
 
     return () => {
       setMaxReStyleCell(0);
-      for (let j = 0; j < cellElement.length; j++) {
-        const element = cellElement[j];
-        element.removeEventListener("click", cellClickHandler);
+      for (const el of cellElement) {
+        el.removeEventListener("click", cellClickHandler);
       }
     }
   }, []);
@@ -73,20 +71,21 @@ export default function CrosswordBoard() {
     if (data) {
       crosswordRef.current?.reset();
       setTimeout(() => {
-        reStyleBoardCell();
+        setCellAttribute();
       }, 200);
     }
   }, [data]);
 
   useEffect(() => {
-    if (maxReStyleCell < 3) {
+    if (maxReStyleCell < MAX_COUNT_REPLY) {
       setTimeout(() => {
-        reStyleBoardCell();
+        setCellAttribute();
       }, 300);
     }
   }, [maxReStyleCell])
 
   useEffect(() => {
+    //Display clue view when user click cell
     if (selectedCell !== -1) {
       const { across, down } = data
       let found: boolean = false
@@ -105,55 +104,160 @@ export default function CrosswordBoard() {
         })
       }
       setSelectedCell(-1);
-    } else {
-      setSelectedClue(null)
     }
   }, [selectedCell])
 
-  const cellClickHandler = (e: any) => {
-    if (selectedCell === -1) {
-      setSelectedCell(e.target?.attributes?.selected?.value);
+  useEffect(() => {
+    //Add or Remove click listener for each cell
+    if (cellElement.length > 0) {
+      for (const el of cellElement) {
+        el.removeEventListener("click", cellClickHandler);
+        el.addEventListener("click", cellClickHandler);
+      }
     }
-    setBoardTheme((prev: any) => ({ ...prev, highlightBackground: DefaultColor, focusBackground: DefaultColor }))
+  }, [cellElement, selectedCellBoard])
+
+  useEffect(() => {
+    doValidateCellBoardColor();
+  }, [boardTheme])
+
+  useEffect(() => {
+    setTimeout(() => {
+      //Re-fill cell color for correct or incorrect clue
+      if (selectedCellBoard.length > 0) {
+        for (const board of selectedCellBoard) {
+          const { index, color } = board;
+          const element: any = cellElement[index];
+          const elChild: any = element.childNodes;
+
+          const childIdx = elChild.length === 3 ? 2 : 1;
+
+          if (elChild[childIdx]?.childNodes.length > 0) {
+            const reactNode: any = elChild[0]
+            reactNode.attributes['fill'].value = color;
+          }
+        }
+
+        setCellElement(cellElement);
+      }
+    }, 50);
+  }, [selectedCellBoard])
+
+  //validate correct or incorrect clue
+  const doValidateCellBoardColor = () => {
+    const selectedBoards = JSON.parse(JSON.stringify(selectedCellBoard))
+
+    for (let i = 0; (i < cellElement.length); i++) {
+      const { childNodes } = cellElement[i];
+      const activeCellColor = childNodes[0].attributes?.fill?.value;
+      const obj = {
+        index: i,
+        color: activeCellColor
+      };
+
+      const foundIdx = selectedBoards.findIndex((x: any) => x.index === i);
+      const childIdx = childNodes.length === 3 ? 2 : 1;
+
+      const value = childNodes.length > 2 ? childNodes[1].innerHTML : -1;
+      if (activeCellColor === ErrorColor && value !== -1) {
+        obj.color = FocusErrorColor;
+      } else if (activeCellColor === FocusErrorColor) {
+        obj.color = ErrorColor;
+      }
+
+      if (foundIdx > 0 && childNodes[childIdx]?.childNodes.lenght === 0) {
+        obj.color = ClearColor
+        selectedBoards[foundIdx] = obj;
+      } else if (activeCellColor === CorrectColor
+        || activeCellColor === ErrorColor
+        || activeCellColor === FocusErrorColor) {
+        if (foundIdx > 0) {
+          selectedBoards[foundIdx] = obj;
+        } else {
+          selectedBoards.push(obj)
+        }
+      }
+    }
+
+    setSelectedCellBoard(selectedBoards);
   }
 
-  const reStyleBoardCell = () => {
+  /**
+   * Handler when user click cell
+   * @param e eventListener
+   */
+  const cellClickHandler = (e: any) => {
+    setBoardTheme((prev: any) => ({ ...prev, highlightBackground: DefaultColor, focusBackground: DefaultColor }))
+
+    if (e.target?.attributes?.selected?.value !== -1) {
+      setSelectedCell(e.target?.attributes?.selected?.value);
+    } else {
+      let isContinue = true;
+      //add timeout to makesure the cell already filled
+      setTimeout(() => {
+        for (let i = 0; (i < cellElement.length && isContinue); i++) {
+          const { childNodes } = cellElement[i];
+          const activeCellColor = childNodes[0].attributes?.fill?.value;
+          if (activeCellColor === DefaultColor && childNodes.length > 1) {
+            const clueVal = childNodes[1].attributes?.selected?.value;
+            setSelectedCell(clueVal);
+            isContinue = false
+          }
+        }
+      }, 200);
+    }
+  }
+
+  /**
+   * Set 'selected' cell attribute whit clue key [1,2,3,etc]
+   * @param childNodes Nodes
+   */
+  const doSetCellAttribute = (childNodes: any) => {
+    const arrNode = [];
+    let isContinue = true;
+    for (let i = 1; (i < childNodes.length && maxReStyleCell < MAX_COUNT_REPLY); i++) {
+      const element: any = childNodes[i];
+      const elChild: any = element.childNodes;
+      if (elChild.length > 0) {
+        const reactNode = elChild[0];
+        reactNode.attributes['stroke-width'].value = '0.75';
+        element.setAttribute("cell", elChild.length > 2 ? elChild[1].innerHTML : -1)
+        const value = {
+          value: elChild.length > 2 ? elChild[1].innerHTML : -1
+        }
+        reactNode.attributes['selected'] = value;
+        for (const el of elChild) {
+          el.attributes['selected'] = value;
+        }
+
+        arrNode.push(element)
+      } else {
+        isContinue = false;
+        setMaxReStyleCell(maxReStyleCell + 1);
+      }
+    }
+
+    if (isContinue) {
+      setCellElement(arrNode);
+    }
+  }
+
+  /**
+   * Get "svg" tag element and adding "selected" in cell attribute
+   */
+  function setCellAttribute() {
     const svgNode = document.getElementsByTagName("svg");
     const { childNodes } = svgNode[0];
     if (childNodes.length === 0 && maxReStyleCell < MAX_COUNT_REPLY) {
       setMaxReStyleCell(maxReStyleCell + 1);
     } else {
-      const arrNode = [];
-      let isContinue = true;
-      for (let i = 1; (i < childNodes.length && maxReStyleCell < MAX_COUNT_REPLY); i++) {
-        const element = childNodes[i];
-        const elChild: any = element.childNodes;
-        if (elChild.length > 0) {
-          const reactNode = elChild[0];
-          reactNode.attributes['stroke-width'].value = '0.75';
-          reactNode.attributes['selected'] = {
-            value: elChild.length > 2 ? elChild[1].innerHTML : -1
-          }
-          arrNode.push(reactNode)
-        } else {
-          isContinue = false;
-          setMaxReStyleCell(maxReStyleCell + 1);
-        }
-      }
-
-      if (isContinue) {
-        for (let j = 0; j < arrNode.length; j++) {
-          const element = arrNode[j];
-          element.addEventListener("click", cellClickHandler);
-        }
-        setCellElement(arrNode);
-      }
+      doSetCellAttribute(childNodes);
     }
   }
 
   // onCorrect is called with the direction, number, and the correct answer.
   const onCorrectHandler = useCallback(() => {
-    setBoardTheme((prev: any) => ({ ...prev, highlightBackground: DefaultColor, focusBackground: DefaultColor }))
+    setBoardTheme((prev: any) => ({ ...prev, highlightBackground: CorrectColor, focusBackground: CorrectColor }))
   }, [data]);
 
   // onAnswerIncorrect is called with the direction, number, and the incorrect answer.
@@ -165,6 +269,10 @@ export default function CrosswordBoard() {
     // TO DO
   }, [data])
 
+  /**
+   * Display clue view
+   * @returns View
+   */
   const renderClueView = () => {
     const direction: string = selectedClue?.direction ?? ''
     const index: number = selectedClue?.index ?? 1
@@ -177,6 +285,10 @@ export default function CrosswordBoard() {
     )
   }
 
+  /**
+   * Display or create Crossword Board
+   * @returns View
+   */
   const renderCrosswordBoard = () => (
     <div className='w-2/5'>
       {selectedClue && renderClueView()}
